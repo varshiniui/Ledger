@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #FAF8F3;
+  --color-ink: #1C2321;
+  --color-ledger: #2F5233;
+  --color-rust: #AB3D2F;
+  --color-amber: #C9902E;
+  --color-slate: #D8D3C7;
+
+  --font-display: "Fraunces", serif;
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.stamp {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border: 2px solid currentColor;
+  border-radius: 2px;
+  transform: rotate(-3deg);
+  text-transform: uppercase;
+}
+
+.receipt-card {
+  position: relative;
+  background: white;
+  border: 1px solid var(--color-slate);
+}
+
+.receipt-card::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-slate) 0,
+    var(--color-slate) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
