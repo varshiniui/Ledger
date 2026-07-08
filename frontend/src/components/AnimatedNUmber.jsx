@@ -25,3 +25,4 @@ export default function AnimatedNumber({ value, format = (v) => Math.round(v), d
 
   return <>{format(display)}</>;
 }
+//njedkk
