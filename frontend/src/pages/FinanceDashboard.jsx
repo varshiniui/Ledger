@@ -4,10 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import StatusStamp from '../components/StatusStamp';
 import AnimatedNumber from '../components/AnimatedNumber';
+import ReportGenerator from '../components/ReportGenerator';
 
 export default function FinanceDashboard() {
   const { user } = useAuth();
   const [claims, setClaims] = useState([]);
+  const [allClaims, setAllClaims] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actioningId, setActioningId] = useState(null);
@@ -31,6 +33,17 @@ export default function FinanceDashboard() {
   useEffect(() => {
     fetchClaims();
   }, [fetchClaims]);
+
+  useEffect(() => {
+    async function loadAllClaims() {
+      const { data } = await supabase
+        .from('expenses')
+        .select('*, employee:profiles!expenses_employee_id_fkey(full_name)')
+        .order('created_at', { ascending: false });
+      setAllClaims(data || []);
+    }
+    loadAllClaims();
+  }, [claims]);
 
   async function handleDecision(claim, decision) {
     setActioningId(claim.id);
@@ -61,7 +74,7 @@ export default function FinanceDashboard() {
     }
     setActioningId(null);
   }
-  
+
   if (loading) return <p className="text-ink/50 text-sm">Loading claims…</p>;
   if (error) return <p className="text-rust text-sm">{error}</p>;
 
@@ -85,7 +98,6 @@ export default function FinanceDashboard() {
       )}
 
       <div className="space-y-4 stagger">
-  
         {claims.map((claim) => (
           <div key={claim.id} className="receipt-card p-4">
             <div className="flex items-center justify-between gap-4 mb-3">
@@ -128,6 +140,13 @@ export default function FinanceDashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-10">
+        <h2 style={{ fontFamily: 'Fraunces, serif' }} className="text-lg mb-4">
+          Reports
+        </h2>
+        <ReportGenerator claims={allClaims} />
       </div>
     </div>
   );
