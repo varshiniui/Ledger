@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import StatusStamp from '../components/StatusStamp';
+import AnimatedNumber from '../components/AnimatedNumber';
 
 export default function FinanceDashboard() {
   const { user } = useAuth();
@@ -60,12 +61,21 @@ export default function FinanceDashboard() {
     }
     setActioningId(null);
   }
-
+  
   if (loading) return <p className="text-ink/50 text-sm">Loading claims…</p>;
   if (error) return <p className="text-rust text-sm">{error}</p>;
 
+  const totalPendingAmount = claims.reduce((sum, c) => sum + (c.amount || 0), 0);
+
   return (
     <div>
+      <div className="paper-tilt receipt-card p-4 mb-6 inline-block">
+        <p className="text-xs text-ink/50 uppercase tracking-wide">Awaiting reimbursement</p>
+        <p className="font-mono text-2xl">
+          <AnimatedNumber value={claims.length} /> claims · <AnimatedNumber value={totalPendingAmount} format={formatCurrency} />
+        </p>
+      </div>
+
       <h2 style={{ fontFamily: 'Fraunces, serif' }} className="text-lg mb-4">
         Finance review
       </h2>
@@ -74,7 +84,8 @@ export default function FinanceDashboard() {
         <p className="text-ink/50 text-sm">No claims waiting on finance review.</p>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-4 stagger">
+  
         {claims.map((claim) => (
           <div key={claim.id} className="receipt-card p-4">
             <div className="flex items-center justify-between gap-4 mb-3">

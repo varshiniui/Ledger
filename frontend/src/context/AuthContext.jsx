@@ -58,11 +58,27 @@ export function AuthProvider({ children }) {
     return { error };
   }
 
+  async function signUp(email, password, fullName) {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return { error };
+
+    if (data.user) {
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id: data.user.id,
+        full_name: fullName,
+        role: 'employee',
+      });
+      if (profileError) return { error: profileError };
+    }
+
+    return { error: null, needsEmailConfirmation: !data.session };
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
   }
 
-  const value = { session, user: session?.user ?? null, profile, loading, signIn, signOut };
+  const value = { session, user: session?.user ?? null, profile, loading, signIn, signUp, signOut };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

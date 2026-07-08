@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import StatusStamp from '../components/StatusStamp';
+import AnimatedNumber from '../components/AnimatedNumber';
 
 export default function AdminDashboard() {
   const [claims, setClaims] = useState([]);
@@ -65,17 +66,17 @@ export default function AdminDashboard() {
           System overview
         </h2>
         <div className="grid grid-cols-3 gap-4">
-          <div className="receipt-card p-4">
+          <div className="paper-tilt receipt-card p-4">
             <p className="text-xs text-ink/50 uppercase tracking-wide">Total claims</p>
-            <p className="font-mono text-2xl">{totalClaims}</p>
+            <p className="font-mono text-2xl"><AnimatedNumber value={totalClaims} /></p>
           </div>
-          <div className="receipt-card p-4">
+          <div className="paper-tilt receipt-card p-4">
             <p className="text-xs text-ink/50 uppercase tracking-wide">Total value</p>
-            <p className="font-mono text-2xl">{formatCurrency(totalAmount)}</p>
+            <p className="font-mono text-2xl"><AnimatedNumber value={totalAmount} format={formatCurrency} /></p>
           </div>
-          <div className="receipt-card p-4">
+          <div className="paper-tilt receipt-card p-4">
             <p className="text-xs text-ink/50 uppercase tracking-wide">Fraud flagged</p>
-            <p className="font-mono text-2xl text-rust">{flagged}</p>
+            <p className="font-mono text-2xl text-rust"><AnimatedNumber value={flagged} /></p>
           </div>
         </div>
       </div>

@@ -6,6 +6,15 @@ import ManagerDashboard from './ManagerDashboard';
 import FinanceDashboard from './FinanceDashboard';
 import AdminDashboard from './AdminDashboard';
 import NotificationBell from '../components/NotificationBell';
+import AmbientBackground from '../components/AmbientBackground';
+
+const ROLE_COLORS = {
+  employee: 'var(--color-slate)',
+  manager: 'var(--color-amber)',
+  finance: 'var(--color-ledger)',
+  admin: 'var(--color-rust)',
+};
+
 export default function Dashboard() {
   const { profile, signOut } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
@@ -14,22 +23,38 @@ export default function Dashboard() {
     setRefreshKey((k) => k + 1);
   }
 
+  const roleColor = ROLE_COLORS[profile?.role] || 'var(--color-ink)';
+
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <header className="flex items-center justify-between border-b border-slate px-6 py-4">
-        <h1 style={{ fontFamily: 'Fraunces, serif' }} className="text-xl">
-          Ledger
-        </h1>
+    <div className="min-h-screen bg-paper text-ink relative">
+      <AmbientBackground variant="subtle" />
+      <header className="relative z-10 flex items-center justify-between border-b border-slate px-6 py-4">
+        <div className="flex items-center gap-3 header-underline inline-block">
+          <div className="brand-mark">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <h1 style={{ fontFamily: 'Fraunces, serif' }} className="text-xl">
+            Ledger
+          </h1>
+        </div>
+
         <div className="flex items-center gap-4 text-sm">
-  <span className="text-ink/60">{profile?.full_name} · {profile?.role}</span>
-  <NotificationBell />
-  <button onClick={signOut} className="text-ink/60 hover:text-ink underline">
-    Sign out
-  </button>
-</div>
+          <span className="text-ink/60">{profile?.full_name}</span>
+          {profile?.role && (
+            <span className="role-chip" style={{ color: roleColor }}>
+              {profile.role}
+            </span>
+          )}
+          <NotificationBell />
+          <button onClick={signOut} className="text-ink/60 hover:text-ink underline">
+            Sign out
+          </button>
+        </div>
       </header>
 
-      <main className="px-6 py-8">
+      <main className="relative z-10 px-6 py-8 enter-fade">
         {!profile && <p>Loading profile…</p>}
 
         {profile?.role === 'employee' && (
@@ -43,10 +68,10 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-          
+
         {profile?.role === 'manager' && <ManagerDashboard />}
         {profile?.role === 'finance' && <FinanceDashboard />}
-{profile?.role === 'admin' && <AdminDashboard />}
+        {profile?.role === 'admin' && <AdminDashboard />}
       </main>
     </div>
   );
