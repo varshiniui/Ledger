@@ -155,5 +155,85 @@ router.post('/submit', upload.single('receipt'), async (req, res) => {
     });
   }
 });
+// POST /api/expenses/submit-manual — completes a claim when OCR couldn't
+// detect a total automatically, using employee-provided figures instead.
+router.post('/submit-manual', async (req, res) => {
+  try {
+    const {
+      employee_id,
+      receipt_url,
+      merchant_name,
+      amount,
+      gst_amount,
+      expense_date,
+      category,
+    } = req.body;
 
+    if (!employee_id || !receipt_url || !amount || !expense_date || !category) {
+      return res.status(400).json({
+        error: 'employee_id, receipt_url, amount, expense_date, and category are required',
+      });
+    }
+
+    const parsedAmount = parseFloat(amount);
+    const parsedGst = gst_amount ? parseFloat(gst_amount) : null;
+
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ error: 'Amount must be a valid positive number' });
+    }
+
+    const hashInput = `${employee_id}_${parsedAmount}_${expense_date}_${merchant_name || ''}`.toLowerCase();
+    const duplicateHash = crypto.createHash('sha256').update(hashInput).digest('hex');
+
+    const { data: existingMatch } = await supabase
+      .from('expenses')
+      .select('id')
+      .eq('duplicate_hash', duplicateHash)
+      .limit(1);
+
+    let fraudScore, fraudReason;
+
+    if (existingMatch && existingMatch.length > 0) {
+      fraudScore = 1;
+      fraudReason = 'Duplicate claim: matching merchant, amount, and date already submitted.';
+    } else {
+      // No OCR text available here, so the fraud model only has the
+      // structured fields to work with, not the raw receipt content.
+      const gstConsistency = evaluateGstConsistency(parsedAmount, parsedGst);
+      const fraudResult = await checkFraud(
+        { merchant_name, amount: parsedAmount, gst_amount: parsedGst, expense_date, category },
+        '(No OCR text available, this claim was entered manually because automatic extraction failed.)',
+        gstConsistency
+      );
+      fraudScore = fraudResult.fraud_score;
+      fraudReason = fraudResult.fraud_reason;
+    }
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('expenses')
+      .insert({
+        employee_id,
+        receipt_url,
+        merchant_name: merchant_name || null,
+        amount: parsedAmount,
+        gst_amount: parsedGst,
+        expense_date,
+        category,
+        ai_category_confidence: null,
+        duplicate_hash: duplicateHash,
+        fraud_score: fraudScore,
+        fraud_reason: fraudReason,
+        status: fraudScore >= 0.75 ? 'finance_review' : 'pending',
+      })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    res.json({ expense: inserted });
+  } catch (err) {
+    console.error('Manual submit error:', err.message);
+    res.status(500).json({ error: 'Failed to submit expense', details: err.message });
+  }
+});
 export default router;

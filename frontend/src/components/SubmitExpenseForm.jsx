@@ -3,6 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { Upload, FileText, X } from 'lucide-react';
 import { formatCurrency } from '../lib/formatters';
 
+const CATEGORIES = [
+  'Travel', 'Food & Dining', 'Accommodation', 'Office Supplies',
+  'Software & Subscriptions', 'Client Entertainment', 'Fuel & Transport',
+  'Communication', 'Miscellaneous',
+];
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function SubmitExpenseForm({ onSubmitted }) {
@@ -11,12 +16,23 @@ export default function SubmitExpenseForm({ onSubmitted }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
+  const [needsManualEntry, setNeedsManualEntry] = useState(false);
+  const [manualData, setManualData] = useState({
+    receipt_url: '',
+    merchant_name: '',
+    amount: '',
+    gst_amount: '',
+    expense_date: '',
+    category: CATEGORIES[0],
+  });
+  const [manualSubmitting, setManualSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
   function handleFileChange(e) {
     setFile(e.target.files[0] || null);
     setError('');
     setResult(null);
+    setNeedsManualEntry(false);
   }
 
   function handleDragOver(e) {
@@ -36,6 +52,7 @@ export default function SubmitExpenseForm({ onSubmitted }) {
       setFile(e.dataTransfer.files[0]);
       setError('');
       setResult(null);
+      setNeedsManualEntry(false);
     }
   }
 
@@ -49,6 +66,7 @@ export default function SubmitExpenseForm({ onSubmitted }) {
     setSubmitting(true);
     setError('');
     setResult(null);
+    setNeedsManualEntry(false);
 
     const formData = new FormData();
     formData.append('receipt', file);
@@ -67,8 +85,12 @@ export default function SubmitExpenseForm({ onSubmitted }) {
       }
 
       if (data.error) {
-        // Backend returned 200 but couldn't fully process the receipt
+        // Backend returned 200/422 but couldn't fully process the receipt
         setError(data.error);
+        if (data.error.toLowerCase().includes('could not detect total amount')) {
+          setNeedsManualEntry(true);
+          setManualData((prev) => ({ ...prev, receipt_url: data.receipt_url || '' }));
+        }
         return;
       }
 
@@ -80,6 +102,36 @@ export default function SubmitExpenseForm({ onSubmitted }) {
       setError(err.message || 'Something went wrong while submitting the receipt.');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleManualSubmit(e) {
+    e.preventDefault();
+    setManualSubmitting(true);
+    setError('');
+
+    try {
+      const res = await fetch(`${API_URL}/api/expenses/submit-manual`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...manualData, employee_id: user.id }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit');
+
+      setResult(data.expense);
+      setNeedsManualEntry(false);
+      setFile(null);
+      setManualData({
+        receipt_url: '', merchant_name: '', amount: '', gst_amount: '',
+        expense_date: '', category: CATEGORIES[0],
+      });
+      if (onSubmitted) onSubmitted(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setManualSubmitting(false);
     }
   }
 
@@ -166,6 +218,80 @@ export default function SubmitExpenseForm({ onSubmitted }) {
           </div>
         )}
       </form>
+
+      {needsManualEntry && (
+        <form onSubmit={handleManualSubmit} className="receipt-card p-6 max-w-md enter-fade space-y-3">
+          <h3 className="font-medium text-ink mb-1">Enter claim details manually</h3>
+          <p className="text-xs text-ink/60 mb-3">
+            The amount could not be read automatically. Fill in the details below to complete this claim.
+          </p>
+
+          <div>
+            <label className="text-xs uppercase tracking-wide text-ink/50">Merchant</label>
+            <input
+              type="text"
+              value={manualData.merchant_name}
+              onChange={(e) => setManualData({ ...manualData, merchant_name: e.target.value })}
+              className="w-full border border-slate px-3 py-2 mt-1 bg-card"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs uppercase tracking-wide text-ink/50">Amount</label>
+            <input
+              type="number"
+              step="0.01"
+              value={manualData.amount}
+              onChange={(e) => setManualData({ ...manualData, amount: e.target.value })}
+              required
+              className="w-full border border-slate px-3 py-2 mt-1 bg-card font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs uppercase tracking-wide text-ink/50">GST amount (optional)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={manualData.gst_amount}
+              onChange={(e) => setManualData({ ...manualData, gst_amount: e.target.value })}
+              className="w-full border border-slate px-3 py-2 mt-1 bg-card font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs uppercase tracking-wide text-ink/50">Date</label>
+            <input
+              type="date"
+              value={manualData.expense_date}
+              onChange={(e) => setManualData({ ...manualData, expense_date: e.target.value })}
+              required
+              className="w-full border border-slate px-3 py-2 mt-1 bg-card"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs uppercase tracking-wide text-ink/50">Category</label>
+            <select
+              value={manualData.category}
+              onChange={(e) => setManualData({ ...manualData, category: e.target.value })}
+              className="w-full border border-slate px-3 py-2 mt-1 bg-card text-sm"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={manualSubmitting}
+            className="btn-press w-full bg-clay text-paper py-2 disabled:opacity-50"
+          >
+            {manualSubmitting ? 'Submitting…' : 'Submit claim'}
+          </button>
+        </form>
+      )}
 
       {result && (
         <div className="receipt-card p-6 max-w-md enter-fade">
