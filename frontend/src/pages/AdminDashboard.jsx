@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from '../lib/formatters';
 import StatusStamp from '../components/StatusStamp';
 import AnimatedNumber from '../components/AnimatedNumber';
 import ReportGenerator from '../components/ReportGenerator';
+import AddUserForm from '../components/AddUserForm';
 
 const CHART_COLORS = ['#33502F', '#B98330', '#9B3F27', '#7A9471', '#C7BFA9', '#5C6B58', '#D4A857', '#8B5A3C'];
 
@@ -234,7 +235,8 @@ export default function AdminDashboard() {
         <h2 style={{ fontFamily: 'Fraunces, serif' }} className="text-lg mb-4">
           Users
         </h2>
-        <div className="space-y-2">
+        <AddUserForm onCreated={(newUser) => setUsers((prev) => [...prev, newUser])} />
+        <div className="space-y-2 mt-6">
           {users.map((u) => (
             <div key={u.id} className="flex items-center justify-between text-sm border-b border-slate py-2">
               <span>{u.full_name}</span>
