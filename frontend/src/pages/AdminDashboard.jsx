@@ -113,7 +113,7 @@ export default function AdminDashboard() {
         <h2 style={{ fontFamily: 'Fraunces, serif' }} className="text-lg mb-4">
           System overview
         </h2>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="paper-tilt receipt-card p-4">
             <p className="text-xs text-ink/50 uppercase tracking-wide">Total claims</p>
             <p className="font-mono text-2xl"><AnimatedNumber value={totalClaims} /></p>
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <h2 style={{ fontFamily: 'Fraunces, serif' }} className="text-lg">
             All claims
           </h2>
@@ -213,7 +213,7 @@ export default function AdminDashboard() {
         </div>
         <div className="space-y-3 stagger">
           {claims.map((claim) => (
-            <div key={claim.id} className="receipt-card p-4 flex items-center justify-between gap-4">
+            <div key={claim.id} className="receipt-card p-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-ink font-medium">
                   {claim.employee?.full_name || 'Unknown'} · {claim.merchant_name || 'Merchant pending'}
@@ -238,7 +238,7 @@ export default function AdminDashboard() {
         <AddUserForm onCreated={(newUser) => setUsers((prev) => [...prev, newUser])} />
         <div className="space-y-2 mt-6">
           {users.map((u) => (
-            <div key={u.id} className="flex items-center justify-between text-sm border-b border-slate py-2">
+            <div key={u.id} className="flex flex-wrap items-center justify-between gap-2 text-sm border-b border-slate py-2">
               <span>{u.full_name}</span>
               <select
                 value={u.role}
@@ -248,6 +248,7 @@ export default function AdminDashboard() {
                 <option value="employee">employee</option>
                 <option value="manager">manager</option>
                 <option value="finance">finance</option>
+                <option value="hr">hr</option>
                 <option value="admin">admin</option>
               </select>
             </div>

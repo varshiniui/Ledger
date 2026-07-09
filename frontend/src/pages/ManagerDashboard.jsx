@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatDate } from '../lib/formatters';
@@ -72,7 +72,7 @@ export default function ManagerDashboard() {
     setActioningId(null);
   }
 
-  if (loading) return <p className="text-ink/50 text-sm">Loading claims…</p>;
+  if (loading) return <p className="text-ink/50 text-sm">Loading claims...</p>;
   if (error) return <p className="text-rust text-sm">{error}</p>;
 
   const totalPendingAmount = claims.reduce((sum, c) => sum + (c.amount || 0), 0);
@@ -82,7 +82,7 @@ export default function ManagerDashboard() {
       <div className="paper-tilt receipt-card p-4 mb-6 inline-block">
         <p className="text-xs text-ink/50 uppercase tracking-wide">Awaiting your decision</p>
         <p className="font-mono text-2xl">
-          <AnimatedNumber value={claims.length} /> claims · <AnimatedNumber value={totalPendingAmount} format={formatCurrency} />
+          <AnimatedNumber value={claims.length} /> claims . <AnimatedNumber value={totalPendingAmount} format={formatCurrency} />
         </p>
       </div>
 
@@ -95,18 +95,27 @@ export default function ManagerDashboard() {
       )}
 
       <div className="space-y-4 stagger">
-  
         {claims.map((claim) => (
           <div key={claim.id} className="receipt-card p-4">
-            <div className="flex items-center justify-between gap-4 mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
               <div>
                 <p className="text-ink font-medium">
                   {claim.employee?.full_name || 'Unknown employee'}
                 </p>
                 <p className="text-sm text-ink/60">
-                  {claim.merchant_name || 'Merchant pending'} ·{' '}
-                  {formatDate(claim.expense_date)} · {claim.category || 'Uncategorized'}
+                  {claim.merchant_name || 'Merchant pending'} .{' '}
+                  {formatDate(claim.expense_date)} . {claim.category || 'Uncategorized'}
                 </p>
+                {claim.receipt_url && (
+                  
+                   <a  href={claim.receipt_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-clay underline"
+                  >
+                    View receipt
+                  </a>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <span className="font-mono text-ink">{formatCurrency(claim.amount)}</span>

@@ -3,8 +3,9 @@ import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
-// Verifies the request is from a logged-in user with role = 'admin'
-async function requireAdmin(req, res, next) {
+// Verifies the request is from a logged-in user with role admin or hr.
+// Stashes the caller's role on req so the handler can apply extra restrictions.
+async function requireAdminOrHR(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Missing auth token' });
@@ -20,15 +21,16 @@ async function requireAdmin(req, res, next) {
     .eq('id', userData.user.id)
     .single();
 
-  if (profileError || profile?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+  if (profileError || !['admin', 'hr'].includes(profile?.role)) {
+    return res.status(403).json({ error: 'Admin or HR access required' });
   }
 
+  req.callerRole = profile.role;
   next();
 }
 
 // POST /api/admin/create-user
-router.post('/create-user', requireAdmin, async (req, res) => {
+router.post('/create-user', requireAdminOrHR, async (req, res) => {
   try {
     const { email, password, full_name, role } = req.body;
 
@@ -36,8 +38,15 @@ router.post('/create-user', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'email, password, and full_name are required' });
     }
 
-    const validRoles = ['employee', 'manager', 'finance', 'admin'];
-    const assignedRole = validRoles.includes(role) ? role : 'employee';
+    const validRoles = ['employee', 'manager', 'finance', 'admin', 'hr'];
+    let assignedRole = validRoles.includes(role) ? role : 'employee';
+
+    // HR can only ever create employee accounts, enforced server side
+    // regardless of what the request claims, since this is a security
+    // boundary, not just a UI convenience.
+    if (req.callerRole === 'hr') {
+      assignedRole = 'employee';
+    }
 
     const { data: created, error: createError } = await supabase.auth.admin.createUser({
       email,

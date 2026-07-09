@@ -10,6 +10,7 @@ import {
   parseWithGroq,
   checkFraud,
   correctTotalUsingGst,
+  evaluateGstConsistency,
 } from '../utils/receiptParser.js';
 import { pdfBufferToImageBuffer } from '../utils/pdfToImage.js';
 
@@ -34,8 +35,7 @@ router.post('/submit', upload.single('receipt'), async (req, res) => {
     const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(fileName);
     const receiptUrl = urlData.publicUrl;
 
-    // 2. If it's a PDF, rasterize the first page to an image first —
-    // Tesseract only reads images, not PDF structure.
+    // 2. If it's a PDF, rasterize the first page to an image first
     let imageBuffer = file.buffer;
     if (file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf')) {
       try {
@@ -114,9 +114,11 @@ router.post('/submit', upload.single('receipt'), async (req, res) => {
       fraudScore = 1;
       fraudReason = 'Duplicate claim: matching merchant, amount, and date already submitted.';
     } else {
+      const gstConsistency = evaluateGstConsistency(amount, gstAmount);
       const fraudResult = await checkFraud(
         { merchant_name: merchantName, amount, gst_amount: gstAmount, expense_date: expenseDate, category },
-        extractedText
+        extractedText,
+        gstConsistency
       );
       fraudScore = fraudResult.fraud_score;
       fraudReason = fraudResult.fraud_reason;

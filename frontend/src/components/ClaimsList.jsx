@@ -42,7 +42,7 @@ export default function ClaimsList({ refreshKey }) {
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-3 mb-6 stagger">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 stagger">
         <div className="paper-tilt receipt-card p-3">
           <Wallet size={16} className="text-ledger mb-1" />
           <p className="text-xs text-ink/50 uppercase tracking-wide">Total claimed</p>
@@ -71,7 +71,7 @@ export default function ClaimsList({ refreshKey }) {
       ) : (
         <div className="space-y-3 stagger">
           {claims.map((claim) => (
-            <div key={claim.id} className="receipt-card p-4 flex items-center justify-between gap-4">
+            <div key={claim.id} className="receipt-card p-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-ink font-medium">{claim.merchant_name || 'Merchant pending'}</p>
                 <p className="text-sm text-ink/60">

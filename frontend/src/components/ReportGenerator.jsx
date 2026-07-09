@@ -106,7 +106,7 @@ export default function ReportGenerator({ claims }) {
         </select>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         <div>
           <p className="text-xs text-ink/50 uppercase tracking-wide">Claims</p>
           <p className="font-mono text-xl">{periodClaims.length}</p>

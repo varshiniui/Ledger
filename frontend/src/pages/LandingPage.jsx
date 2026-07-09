@@ -125,7 +125,7 @@ export default function LandingPage({ onGetStarted }) {
           <div className="grid grid-cols-3 gap-4 text-center">
             {STATS.map((s) => (
               <div key={s.label} className="paper-tilt receipt-card py-6">
-                <p className="font-mono text-3xl text-clay">
+                <p className="font-mono text-2xl sm:text-3xl text-clay">
                   <AnimatedNumber value={s.value} format={(v) => `${Math.round(v)}${s.suffix}`} />
                 </p>
                 <p className="text-xs text-ink/50 uppercase tracking-wide mt-1">{s.label}</p>
@@ -142,7 +142,7 @@ export default function LandingPage({ onGetStarted }) {
           </h2>
         </Reveal>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {FEATURES.map((f, i) => (
             <Reveal key={f.title} delay={i * 70}>
               <div className="paper-tilt receipt-card p-5 h-full text-center">

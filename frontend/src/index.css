@@ -638,3 +638,13 @@ input:-webkit-autofill:active {
   border-radius: 3px;
   transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
+/* --- Mobile responsiveness --- */
+@media (max-width: 480px) {
+  .hero-stack {
+    width: 220px;
+    height: 250px;
+  }
+  .hero-stack .card {
+    padding: 14px;
+  }
+}

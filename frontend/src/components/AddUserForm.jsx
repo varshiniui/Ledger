@@ -3,12 +3,12 @@ import { useAuth } from '../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-export default function AddUserForm({ onCreated }) {
+export default function AddUserForm({ onCreated, lockRole }) {
   const { session } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('employee');
+  const [role, setRole] = useState(lockRole || 'employee');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -19,6 +19,8 @@ export default function AddUserForm({ onCreated }) {
     setSuccess('');
     setLoading(true);
 
+    const effectiveRole = lockRole || role;
+
     try {
       const res = await fetch(`${API_URL}/api/admin/create-user`, {
         method: 'POST',
@@ -26,17 +28,17 @@ export default function AddUserForm({ onCreated }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ email, password, full_name: fullName, role }),
+        body: JSON.stringify({ email, password, full_name: fullName, role: effectiveRole }),
       });
 
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || 'Failed to create user');
 
-      setSuccess(`${fullName} added as ${role}.`);
+      setSuccess(`${fullName} added as ${effectiveRole}.`);
       setFullName('');
       setEmail('');
       setPassword('');
-      setRole('employee');
+      if (!lockRole) setRole('employee');
       if (onCreated) onCreated(body.user);
     } catch (err) {
       setError(err.message);
@@ -83,19 +85,27 @@ export default function AddUserForm({ onCreated }) {
         />
       </div>
 
-      <div>
-        <label className="text-xs uppercase tracking-wide text-ink/50">Role</label>
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="w-full border border-slate px-3 py-2 mt-1 bg-card font-mono text-sm"
-        >
-          <option value="employee">employee</option>
-          <option value="manager">manager</option>
-          <option value="finance">finance</option>
-          <option value="admin">admin</option>
-        </select>
-      </div>
+      {lockRole ? (
+        <div>
+          <label className="text-xs uppercase tracking-wide text-ink/50">Role</label>
+          <p className="font-mono text-sm mt-1 text-ink/70">{lockRole}</p>
+        </div>
+      ) : (
+        <div>
+          <label className="text-xs uppercase tracking-wide text-ink/50">Role</label>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="w-full border border-slate px-3 py-2 mt-1 bg-card font-mono text-sm"
+          >
+            <option value="employee">employee</option>
+            <option value="manager">manager</option>
+            <option value="finance">finance</option>
+            <option value="hr">hr</option>
+            <option value="admin">admin</option>
+          </select>
+        </div>
+      )}
 
       {error && <p className="text-sm text-rust">{error}</p>}
       {success && <p className="text-sm text-ledger">{success}</p>}
