@@ -4,7 +4,7 @@ import PasswordInput from '../components/PasswordInput';
 import AmbientBackground from '../components/AmbientBackground';
 import { useTilt } from '../hooks/useTilt';
 
-export default function Login() {
+export default function Login({ onSwitchToRegister }) {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,6 +73,12 @@ export default function Login() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+        <p className="text-sm text-ink/60 mt-6 text-center">
+          New here?{' '}
+          <button onClick={onSwitchToRegister} className="text-clay underline hover:text-ink">
+            Create an account
+          </button>
+        </p>
       </div>
     </div>
   );

@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 
 export default function App() {
   const { user, loading } = useAuth();
-  const [showLogin, setShowLogin] = useState(false);
+  const [view, setView] = useState('landing');
 
   if (loading) {
     return (
@@ -18,9 +19,11 @@ export default function App() {
 
   if (user) return <Dashboard />;
 
-  return showLogin ? (
-    <Login />
-  ) : (
-    <LandingPage onGetStarted={() => setShowLogin(true)} />
-  );
+  if (view === 'login') {
+    return <Login onSwitchToRegister={() => setView('register')} />;
+  }
+  if (view === 'register') {
+    return <Register onSwitchToLogin={() => setView('login')} />;
+  }
+  return <LandingPage onGetStarted={() => setView('login')} />;
 }
