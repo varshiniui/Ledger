@@ -10,7 +10,7 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'https://ledger-zeta-gules.vercel.app/',
+    'https://ledger-zeta-gules.vercel.app',
   ],
 }));
 app.use(express.json());
