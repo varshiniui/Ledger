@@ -1,16 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Wallet, Clock, CheckCircle2 } from 'lucide-react';
+import { Wallet, Clock, CheckCircle2, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import StatusStamp from './StatusStamp';
 import AnimatedNumber from './AnimatedNumber';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 export default function ClaimsList({ refreshKey }) {
   const { user } = useAuth();
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchClaims = useCallback(async () => {
     setLoading(true);
@@ -33,8 +36,27 @@ export default function ClaimsList({ refreshKey }) {
     fetchClaims();
   }, [fetchClaims, refreshKey]);
 
+  async function handleDelete(claimId) {
+    if (!window.confirm('Delete this claim? This cannot be undone.')) return;
+
+    setDeletingId(claimId);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/api/expenses/${claimId}?employee_id=${user.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to delete claim');
+
+      setClaims((prev) => prev.filter((c) => c.id !== claimId));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   if (loading) return <p className="text-ink/50 text-sm">Loading claims…</p>;
-  if (error) return <p className="text-rust text-sm">Failed to load claims: {error}</p>;
 
   const totalAmount = claims.reduce((sum, c) => sum + (c.amount || 0), 0);
   const pendingCount = claims.filter((c) => c.status === 'pending' || c.status === 'finance_review').length;
@@ -66,6 +88,8 @@ export default function ClaimsList({ refreshKey }) {
         </div>
       </div>
 
+      {error && <p className="text-rust text-sm mb-3">{error}</p>}
+
       {claims.length === 0 ? (
         <p className="text-ink/50 text-sm">No claims submitted yet.</p>
       ) : (
@@ -81,6 +105,17 @@ export default function ClaimsList({ refreshKey }) {
               <div className="flex items-center gap-4">
                 <span className="font-mono text-ink">{formatCurrency(claim.amount)}</span>
                 <StatusStamp status={claim.status} />
+                {claim.status !== 'approved' && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(claim.id)}
+                    disabled={deletingId === claim.id}
+                    title="Delete claim"
+                    className="p-1.5 text-ink/40 hover:text-rust rounded-full hover:bg-slate/10 transition-colors disabled:opacity-40"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             </div>
           ))}

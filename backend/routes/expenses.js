@@ -18,8 +18,10 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post('/submit', upload.single('receipt'), async (req, res) => {
+  // Declared here (not inside try) so it's still readable in the catch block below.
+  let file;
   try {
-    const file = req.file;
+    file = req.file;
     const { employee_id } = req.body;
 
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
@@ -98,31 +100,33 @@ router.post('/submit', upload.single('receipt'), async (req, res) => {
       });
     }
 
-    // 5. Duplicate hash
+    // 5. Duplicate check — this now actually blocks the submission instead of
+    // just flagging it. Only an existing 'rejected' claim doesn't count as a
+    // block, so a genuinely rejected claim can be resubmitted.
     const hashInput = `${employee_id}_${amount}_${expenseDate}_${merchantName}`.toLowerCase();
     const duplicateHash = crypto.createHash('sha256').update(hashInput).digest('hex');
 
     const { data: existingMatch } = await supabase
       .from('expenses')
-      .select('id')
+      .select('id, status')
       .eq('duplicate_hash', duplicateHash)
+      .neq('status', 'rejected')
       .limit(1);
 
-    let fraudScore, fraudReason;
-
     if (existingMatch && existingMatch.length > 0) {
-      fraudScore = 1;
-      fraudReason = 'Duplicate claim: matching merchant, amount, and date already submitted.';
-    } else {
-      const gstConsistency = evaluateGstConsistency(amount, gstAmount);
-      const fraudResult = await checkFraud(
-        { merchant_name: merchantName, amount, gst_amount: gstAmount, expense_date: expenseDate, category },
-        extractedText,
-        gstConsistency
-      );
-      fraudScore = fraudResult.fraud_score;
-      fraudReason = fraudResult.fraud_reason;
+      return res.status(409).json({
+        error: 'Duplicate claim: a claim with the same merchant, amount, and date has already been submitted.',
+      });
     }
+
+    const gstConsistency = evaluateGstConsistency(amount, gstAmount);
+    const fraudResult = await checkFraud(
+      { merchant_name: merchantName, amount, gst_amount: gstAmount, expense_date: expenseDate, category },
+      extractedText,
+      gstConsistency
+    );
+    const fraudScore = fraudResult.fraud_score;
+    const fraudReason = fraudResult.fraud_reason;
 
     // 6. Save
     const { data: inserted, error: insertError } = await supabase
@@ -155,6 +159,7 @@ router.post('/submit', upload.single('receipt'), async (req, res) => {
     });
   }
 });
+
 // POST /api/expenses/submit-manual — completes a claim when OCR couldn't
 // detect a total automatically, using employee-provided figures instead.
 router.post('/submit-manual', async (req, res) => {
@@ -187,27 +192,27 @@ router.post('/submit-manual', async (req, res) => {
 
     const { data: existingMatch } = await supabase
       .from('expenses')
-      .select('id')
+      .select('id, status')
       .eq('duplicate_hash', duplicateHash)
+      .neq('status', 'rejected')
       .limit(1);
 
-    let fraudScore, fraudReason;
-
     if (existingMatch && existingMatch.length > 0) {
-      fraudScore = 1;
-      fraudReason = 'Duplicate claim: matching merchant, amount, and date already submitted.';
-    } else {
-      // No OCR text available here, so the fraud model only has the
-      // structured fields to work with, not the raw receipt content.
-      const gstConsistency = evaluateGstConsistency(parsedAmount, parsedGst);
-      const fraudResult = await checkFraud(
-        { merchant_name, amount: parsedAmount, gst_amount: parsedGst, expense_date, category },
-        '(No OCR text available, this claim was entered manually because automatic extraction failed.)',
-        gstConsistency
-      );
-      fraudScore = fraudResult.fraud_score;
-      fraudReason = fraudResult.fraud_reason;
+      return res.status(409).json({
+        error: 'Duplicate claim: a claim with the same merchant, amount, and date has already been submitted.',
+      });
     }
+
+    // No OCR text available here, so the fraud model only has the
+    // structured fields to work with, not the raw receipt content.
+    const gstConsistency = evaluateGstConsistency(parsedAmount, parsedGst);
+    const fraudResult = await checkFraud(
+      { merchant_name, amount: parsedAmount, gst_amount: parsedGst, expense_date, category },
+      '(No OCR text available, this claim was entered manually because automatic extraction failed.)',
+      gstConsistency
+    );
+    const fraudScore = fraudResult.fraud_score;
+    const fraudReason = fraudResult.fraud_reason;
 
     const { data: inserted, error: insertError } = await supabase
       .from('expenses')
@@ -236,4 +241,49 @@ router.post('/submit-manual', async (req, res) => {
     res.status(500).json({ error: 'Failed to submit expense', details: err.message });
   }
 });
+
+// DELETE /api/expenses/:id — lets an employee withdraw their own claim any
+// time before it's been approved. Approved claims can't be deleted since
+// they're a settled financial record at that point.
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { employee_id } = req.query;
+
+    if (!employee_id) {
+      return res.status(400).json({ error: 'employee_id required' });
+    }
+
+    const { data: existing, error: fetchError } = await supabase
+      .from('expenses')
+      .select('id, employee_id, status')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({ error: 'Claim not found' });
+    }
+
+    if (existing.employee_id !== employee_id) {
+      return res.status(403).json({ error: 'You can only delete your own claims' });
+    }
+
+    if (existing.status === 'approved') {
+      return res.status(400).json({ error: 'Approved claims cannot be deleted' });
+    }
+
+    const { error: deleteError } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) throw deleteError;
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete error:', err.message);
+    res.status(500).json({ error: 'Failed to delete claim', details: err.message });
+  }
+});
+
 export default router;
